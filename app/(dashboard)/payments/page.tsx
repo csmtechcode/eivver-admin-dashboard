@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, Download, RotateCcw, Wallet } from "lucide-react";
+import { CheckCircle2, CreditCard, Download, RotateCcw, Wallet, XCircle } from "lucide-react";
 
 import PageHeader from "@/components/layout/page-header";
 import {
     exportPaymentsCsv,
     fetchFinancialStats,
+    fetchGatewayStatus,
     fetchPayments,
     refundPayment,
 } from "@/services/payments";
 import { getApiErrorMessage } from "@/lib/axios";
 import { downloadCsv, formatCurrency, formatDate } from "@/lib/utils";
-import type { Payment, PaymentStatus } from "@/types/payment";
+import type { GatewayStatus, Payment, PaymentStatus } from "@/types/payment";
 
 const statusStyles: Record<string, string> = {
     pending:
@@ -50,6 +51,11 @@ export default function PaymentsPage() {
         totalPayments: number;
     } | null>(null);
 
+    const [gatewayStatus, setGatewayStatus] = useState<{
+        paystack: GatewayStatus;
+        flutterwave: GatewayStatus;
+    } | null>(null);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -85,6 +91,10 @@ export default function PaymentsPage() {
                     totalPayments: data.successfulPayments.count,
                 })
             )
+            .catch(() => {});
+
+        fetchGatewayStatus()
+            .then((data) => setGatewayStatus(data))
             .catch(() => {});
     }, []);
 
@@ -165,6 +175,22 @@ export default function PaymentsPage() {
                     value={stats ? stats.totalPayments.toLocaleString() : "-"}
                 />
             </div>
+
+            {gatewayStatus && (
+                <div className="rounded-2xl border bg-card p-6 shadow-sm dark:bg-zinc-900">
+                    <h2 className="mb-4 text-lg font-semibold">Payment Gateway Status</h2>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <GatewayCard
+                            name="Paystack"
+                            status={gatewayStatus.paystack}
+                        />
+                        <GatewayCard
+                            name="Flutterwave"
+                            status={gatewayStatus.flutterwave}
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="rounded-2xl border bg-card p-6 shadow-sm dark:bg-zinc-900">
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -301,6 +327,43 @@ function StatCard({
                     <p className="text-2xl font-bold">{value}</p>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function GatewayCard({
+    name,
+    status,
+}: {
+    name: string;
+    status: GatewayStatus;
+}) {
+    const statusColor =
+        status.status === "healthy"
+            ? "text-emerald-600"
+            : status.status === "unreachable"
+              ? "text-red-600"
+              : "text-zinc-500";
+
+    return (
+        <div className="flex items-center justify-between rounded-xl border p-4">
+            <div>
+                <p className="font-medium">{name}</p>
+                <p className={`text-sm ${statusColor}`}>
+                    {status.status === "healthy"
+                        ? "Connected & healthy"
+                        : status.status === "unreachable"
+                          ? "Configured but unreachable"
+                          : "Not configured"}
+                </p>
+            </div>
+            {status.status === "healthy" ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            ) : status.status === "unreachable" ? (
+                <XCircle className="h-5 w-5 text-red-600" />
+            ) : (
+                <XCircle className="h-5 w-5 text-zinc-400" />
+            )}
         </div>
     );
 }

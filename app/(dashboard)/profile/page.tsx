@@ -22,10 +22,12 @@ import {
     fetchNotificationPreferences,
     fetchSecurityStatus,
     startTwoFactorSetup,
+    switchAdminAccount,
     updateAdminProfile,
     updateNotificationPreferences,
     verifyTwoFactor,
 } from "@/services/profile";
+import { useAuthStore } from "@/store/auth.store";
 import { getApiErrorMessage } from "@/lib/axios";
 import { formatDateTime } from "@/lib/utils";
 import type { NotificationPreferences, UserActivityItem } from "@/types/admin";
@@ -63,6 +65,12 @@ export default function ProfilePage() {
     const [savingPreferences, setSavingPreferences] = useState(false);
 
     const [activity, setActivity] = useState<UserActivityItem[]>([]);
+
+    const [switchEmail, setSwitchEmail] = useState("");
+    const [switchPassword, setSwitchPassword] = useState("");
+    const [switching, setSwitching] = useState(false);
+
+    const login = useAuthStore((state) => state.login);
 
     useEffect(() => {
         let cancelled = false;
@@ -170,6 +178,34 @@ export default function ProfilePage() {
 
     function togglePreference(key: keyof NotificationPreferences) {
         setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
+    }
+
+    async function handleSwitchAccount() {
+        if (!switchEmail || !switchPassword) {
+            setError("Email and password are required to switch accounts.");
+            return;
+        }
+
+        setSwitching(true);
+        setError(null);
+        setMessage(null);
+
+        try {
+            const response = await switchAdminAccount({
+                email: switchEmail,
+                password: switchPassword,
+            });
+
+            login(response.user, response.accessToken, response.refreshToken);
+            setSwitchEmail("");
+            setSwitchPassword("");
+            setMessage(`Switched to ${response.user.email} successfully.`);
+            window.location.reload();
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        } finally {
+            setSwitching(false);
+        }
     }
 
     async function handleSaveProfile() {
@@ -588,6 +624,48 @@ export default function ProfilePage() {
                         ))}
                     </div>
                 )}
+            </div>
+
+            <div className="rounded-2xl border bg-card p-6 shadow-sm dark:bg-zinc-900">
+                <h2 className="mb-6 text-lg font-semibold">Switch Admin Account</h2>
+
+                <p className="mb-4 text-sm text-muted-foreground">
+                    Quickly switch to another admin account without logging out first.
+                </p>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                        <span className="mb-1 block text-sm font-medium">Email</span>
+                        <input
+                            type="email"
+                            value={switchEmail}
+                            onChange={(e) => setSwitchEmail(e.target.value)}
+                            placeholder="admin@eivver.com"
+                            className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                        />
+                    </label>
+
+                    <label className="block">
+                        <span className="mb-1 block text-sm font-medium">Password</span>
+                        <input
+                            type="password"
+                            value={switchPassword}
+                            onChange={(e) => setSwitchPassword(e.target.value)}
+                            placeholder="Enter password"
+                            className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                        />
+                    </label>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                    <button
+                        onClick={handleSwitchAccount}
+                        disabled={switching}
+                        className="inline-flex items-center gap-2 rounded-lg border border-blue-300 px-5 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-50 disabled:opacity-60"
+                    >
+                        {switching ? "Switching..." : "Switch Account"}
+                    </button>
+                </div>
             </div>
         </div>
     );

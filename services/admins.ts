@@ -1,6 +1,7 @@
 import api from "./api";
 import type { Paginated } from "@/types/api";
 import type { AdminUser } from "@/types/admin";
+import type { UserRole } from "@/types/user";
 
 export interface ListAdminsParams {
     page?: number;
@@ -48,4 +49,17 @@ export const updateAdminStatus = async (
 
 export const deleteAdmin = async (id: string): Promise<void> => {
     await api.delete(`/admin/admins/${id}`);
+};
+
+export const updateAdminRole = async (
+    id: string,
+    role: UserRole,
+    reason?: string
+): Promise<AdminUser> => {
+    const data = await api.patch<{ user: AdminUser }>(`/admin/users/${id}/role`, {
+        role,
+        reason,
+    });
+
+    return data.user;
 };

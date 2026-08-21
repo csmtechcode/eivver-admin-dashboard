@@ -14,7 +14,7 @@ import {
 } from "@/services/fixers";
 import { getApiErrorMessage } from "@/lib/axios";
 import { downloadCsv } from "@/lib/utils";
-import type { AdminFixer, AvailabilityStatus } from "@/types/fixer";
+import type { AdminFixer, AvailabilityStatus, VerificationStatus } from "@/types/fixer";
 
 const verificationStyles: Record<string, string> = {
     verified:
@@ -47,6 +47,8 @@ export default function FixersPage() {
 
     const [query, setQuery] = useState("");
     const [debouncedQuery, setDebouncedQuery] = useState("");
+    const [verificationFilter, setVerificationFilter] = useState<VerificationStatus | "">("");
+    const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityStatus | "">("");
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedQuery(query), 400);
@@ -57,7 +59,13 @@ export default function FixersPage() {
     useEffect(() => {
         let cancelled = false;
 
-        fetchFixers({ page, limit: 20, search: debouncedQuery })
+        fetchFixers({
+            page,
+            limit: 20,
+            search: debouncedQuery,
+            verificationStatus: verificationFilter || undefined,
+            availabilityStatus: availabilityFilter || undefined,
+        })
             .then((data) => {
                 if (cancelled) return;
                 setError(null);
@@ -74,7 +82,7 @@ export default function FixersPage() {
         return () => {
             cancelled = true;
         };
-    }, [page, debouncedQuery]);
+    }, [page, debouncedQuery, verificationFilter, availabilityFilter]);
 
     useEffect(() => {
         fetchFixerDashboardStats()
@@ -145,19 +153,49 @@ export default function FixersPage() {
                         All Fixers ({total})
                     </h2>
 
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-                        <input
-                            type="search"
-                            value={query}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <select
+                            value={verificationFilter}
                             onChange={(e) => {
-                                setQuery(e.target.value);
+                                setVerificationFilter(e.target.value as VerificationStatus | "");
                                 setPage(1);
                             }}
-                            placeholder="Search fixers..."
-                            className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-primary sm:w-64"
-                        />
+                            className="h-10 rounded-lg border bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                        >
+                            <option value="">All verification</option>
+                            <option value="verified">Verified</option>
+                            <option value="pending">Pending</option>
+                            <option value="unverified">Unverified</option>
+                        </select>
+
+                        <select
+                            value={availabilityFilter}
+                            onChange={(e) => {
+                                setAvailabilityFilter(e.target.value as AvailabilityStatus | "");
+                                setPage(1);
+                            }}
+                            className="h-10 rounded-lg border bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                        >
+                            <option value="">All availability</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                            <option value="busy">Busy</option>
+                        </select>
+
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+                            <input
+                                type="search"
+                                value={query}
+                                onChange={(e) => {
+                                    setQuery(e.target.value);
+                                    setPage(1);
+                                }}
+                                placeholder="Search fixers..."
+                                className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-primary sm:w-64"
+                            />
+                        </div>
                     </div>
                 </div>
 

@@ -28,6 +28,7 @@ import {
     fixerLocation,
     reactivateFixer,
     rejectFixer,
+    setFixerAvailability,
     suspendFixer,
     updateFixerProfile,
 } from "@/services/fixers";
@@ -35,7 +36,7 @@ import { fetchBookings } from "@/services/bookings";
 import { getApiErrorMessage } from "@/lib/axios";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types/booking";
-import type { AdminFixer, FixerDocument, FixerMetrics } from "@/types/fixer";
+import type { AdminFixer, AvailabilityStatus, FixerDocument, FixerMetrics } from "@/types/fixer";
 import type { FixerReview } from "@/types/admin";
 
 function DetailRow({
@@ -184,6 +185,28 @@ export default function FixerDetailPage() {
         }
     }
 
+    async function handleAvailabilityChange(status: AvailabilityStatus) {
+        if (!fixer) return;
+
+        const reason = window.prompt(
+            `Change availability to ${status}? (optional reason)`
+        );
+
+        if (reason === null) return;
+
+        setActing(true);
+        setError(null);
+
+        try {
+            await setFixerAvailability(fixer.id, status, reason || undefined);
+            setFixer({ ...fixer, availabilityStatus: status });
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        } finally {
+            setActing(false);
+        }
+    }
+
     function openProfileForm() {
         if (!fixer) return;
 
@@ -291,8 +314,7 @@ export default function FixerDetailPage() {
                     </h1>
 
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Joined {formatDate(fixer.createdAt)} ·{" "}
-                        {fixer.availabilityStatus}
+                        Joined {formatDate(fixer.createdAt)}
                     </p>
                 </div>
 
@@ -303,6 +325,27 @@ export default function FixerDetailPage() {
                     >
                         Edit Profile
                     </button>
+
+                    <div className="flex items-center gap-1 rounded-lg border p-1">
+                        {(["online", "offline", "busy"] as AvailabilityStatus[]).map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => handleAvailabilityChange(status)}
+                                disabled={acting || fixer.availabilityStatus === status}
+                                className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                                    fixer.availabilityStatus === status
+                                        ? status === "online"
+                                            ? "bg-emerald-600 text-white"
+                                            : status === "busy"
+                                              ? "bg-blue-600 text-white"
+                                              : "bg-zinc-600 text-white"
+                                        : "text-muted-foreground hover:bg-muted"
+                                } disabled:opacity-50`}
+                            >
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </button>
+                        ))}
+                    </div>
 
                     {fixer.verificationStatus === "pending" && (
                         <>

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Ban, CheckCircle2, Download, Eye, Search, ShieldAlert, Users } from "lucide-react";
+import { Ban, CheckCircle2, Download, Eye, Search, ShieldAlert, Trash2, Users } from "lucide-react";
 
 import PageHeader from "@/components/layout/page-header";
 import {
     banCustomer,
+    deleteCustomer,
     exportUsersCsv,
     fetchCustomers,
     fetchUserStats,
@@ -15,7 +16,7 @@ import {
 } from "@/services/customers";
 import { getApiErrorMessage } from "@/lib/axios";
 import { downloadCsv, formatDate } from "@/lib/utils";
-import type { User } from "@/types/user";
+import type { AccountStatus, User } from "@/types/user";
 
 const statusStyles: Record<string, string> = {
     active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
@@ -41,6 +42,7 @@ export default function CustomersPage() {
 
     const [query, setQuery] = useState("");
     const [debouncedQuery, setDebouncedQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<AccountStatus | "">("");
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedQuery(query), 400);
@@ -55,6 +57,7 @@ export default function CustomersPage() {
             page,
             limit: 20,
             search: debouncedQuery,
+            accountStatus: statusFilter || undefined,
         })
             .then((data) => {
                 if (cancelled) return;
@@ -72,7 +75,7 @@ export default function CustomersPage() {
         return () => {
             cancelled = true;
         };
-    }, [page, debouncedQuery]);
+    }, [page, debouncedQuery, statusFilter]);
 
     useEffect(() => {
         fetchUserStats()
@@ -162,6 +165,27 @@ export default function CustomersPage() {
         }
     }
 
+    async function handleDelete(user: User) {
+        const name =
+            user.name ??
+            [user.firstName, user.lastName].filter(Boolean).join(" ");
+
+        if (!window.confirm(`Permanently delete ${name || user.email}? This cannot be undone.`)) return;
+
+        setActingId(user.id);
+        setError(null);
+
+        try {
+            await deleteCustomer(user.id);
+            setCustomers((prev) => prev.filter((c) => c.id !== user.id));
+            setTotal((t) => t - 1);
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        } finally {
+            setActingId(null);
+        }
+    }
+
     const totalPages = Math.max(1, Math.ceil(total / 20));
 
     return (
@@ -211,19 +235,35 @@ export default function CustomersPage() {
                         All Customers ({total})
                     </h2>
 
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-                        <input
-                            type="search"
-                            value={query}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <select
+                            value={statusFilter}
                             onChange={(e) => {
-                                setQuery(e.target.value);
+                                setStatusFilter(e.target.value as AccountStatus | "");
                                 setPage(1);
                             }}
-                            placeholder="Search customers..."
-                            className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-primary sm:w-64"
-                        />
+                            className="h-10 rounded-lg border bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                        >
+                            <option value="">All statuses</option>
+                            <option value="active">Active</option>
+                            <option value="suspended">Suspended</option>
+                            <option value="banned">Banned</option>
+                        </select>
+
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+                            <input
+                                type="search"
+                                value={query}
+                                onChange={(e) => {
+                                    setQuery(e.target.value);
+                                    setPage(1);
+                                }}
+                                placeholder="Search customers..."
+                                className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-primary sm:w-64"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -341,6 +381,15 @@ export default function CustomersPage() {
                                                         className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-60"
                                                     >
                                                         Ban
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleDelete(customer)}
+                                                        disabled={actingId === customer.id}
+                                                        className="inline-flex items-center gap-1 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                        Delete
                                                     </button>
                                                 </div>
                                             </td>

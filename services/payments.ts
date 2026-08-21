@@ -1,6 +1,6 @@
 import api from "./api";
 import type { Paginated } from "@/types/api";
-import type { FinancialStats, Payment, PaymentStatus, WithdrawalStats } from "@/types/payment";
+import type { FinancialStats, GatewayStatus, Payment, PaymentStatus, WithdrawalStats } from "@/types/payment";
 import type { RevenueReport } from "@/types/dashboard";
 
 export interface ListPaymentsParams {
@@ -93,3 +93,10 @@ export function normalizePayment(payment: Payment): Payment {
         amount: amountKobo / 100,
     };
 }
+
+export const fetchGatewayStatus = async (): Promise<{
+    paystack: GatewayStatus;
+    flutterwave: GatewayStatus;
+}> => {
+    return api.get("/admin/financial/gateway-status");
+};

@@ -185,6 +185,19 @@ export const updateFixerProfile = async (
     return data.fixer;
 };
 
+export const setFixerAvailability = async (
+    id: string,
+    availabilityStatus: AvailabilityStatus,
+    reason?: string
+): Promise<AdminFixer> => {
+    const data = await api.patch<{ fixer: AdminFixer }>(`/admin/fixers/${id}/availability`, {
+        availabilityStatus,
+        reason,
+    });
+
+    return data.fixer;
+};
+
 export function displayName(fixer: AdminFixer): string {
     if (fixer.user?.name) return fixer.user.name;
     if (fixer.user) {

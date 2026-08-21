@@ -39,3 +39,9 @@ export interface WithdrawalStats {
     pendingVolume: number;
     paidVolume: number;
 }
+
+export interface GatewayStatus {
+    configured: boolean;
+    reachable: boolean;
+    status: "not_configured" | "healthy" | "unreachable";
+}

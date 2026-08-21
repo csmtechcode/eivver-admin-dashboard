@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save } from "lucide-react";
+import { Info, Save } from "lucide-react";
 
 import PageHeader from "@/components/layout/page-header";
 import { fetchSettings, updateSettings } from "@/services/settings";
 import { getApiErrorMessage } from "@/lib/axios";
+import { formatCurrency } from "@/lib/utils";
 import type { PlatformSettings } from "@/types/dashboard";
 
 const emptySettings: PlatformSettings = {
@@ -181,7 +182,7 @@ export default function SettingsPage() {
 
                     <label className="block">
                         <span className="mb-1 block text-sm font-medium">
-                            Service Fee (%)
+                            Service Fee / Commission (%)
                         </span>
 
                         <input
@@ -199,6 +200,25 @@ export default function SettingsPage() {
                             className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-primary"
                         />
                     </label>
+
+                    <div className="mt-4 rounded-xl bg-muted p-4">
+                        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                            <Info className="h-4 w-4 text-muted-foreground" />
+                            Commission Preview
+                        </div>
+                        <div className="grid gap-3 text-sm sm:grid-cols-2">
+                            <div>
+                                <p className="text-muted-foreground">On a {formatCurrency(10000)} job:</p>
+                                <p className="font-medium">Platform keeps: {formatCurrency(10000 * settings.serviceFeePercent / 100)}</p>
+                                <p className="font-medium">Fixer receives: {formatCurrency(10000 * (1 - settings.serviceFeePercent / 100))}</p>
+                            </div>
+                            <div>
+                                <p className="text-muted-foreground">On a {formatCurrency(50000)} job:</p>
+                                <p className="font-medium">Platform keeps: {formatCurrency(50000 * settings.serviceFeePercent / 100)}</p>
+                                <p className="font-medium">Fixer receives: {formatCurrency(50000 * (1 - settings.serviceFeePercent / 100))}</p>
+                            </div>
+                        </div>
+                    </div>
 
                     <label className="mt-6 flex cursor-pointer items-center justify-between rounded-xl border p-4">
                         <div>

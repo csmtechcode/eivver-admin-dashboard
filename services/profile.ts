@@ -79,3 +79,16 @@ export const fetchMyActivity = async (params: {
         params: { page: params.page ?? 1, limit: params.limit ?? 20 },
     });
 };
+
+export interface SwitchAccountPayload {
+    email: string;
+    password: string;
+}
+
+export const switchAdminAccount = async (payload: SwitchAccountPayload): Promise<{
+    accessToken: string;
+    refreshToken?: string;
+    user: User;
+}> => {
+    return api.post("/auth/login", payload);
+};

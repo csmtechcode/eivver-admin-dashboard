@@ -8,6 +8,7 @@ import {
     createAdmin,
     deleteAdmin,
     fetchAdmins,
+    updateAdminRole,
     updateAdminStatus,
     type CreateAdminPayload,
 } from "@/services/admins";
@@ -140,6 +141,30 @@ export default function AdminsPage() {
         }
     }
 
+    async function handleRoleChange(admin: AdminUser, newRole: string) {
+        if (newRole === admin.role) return;
+
+        const reason = window.prompt(
+            `Change ${admin.email}'s role from "${admin.role}" to "${newRole}"? (optional reason)`
+        );
+
+        if (reason === null) return;
+
+        setActingId(admin.id);
+        setError(null);
+
+        try {
+            const updated = await updateAdminRole(admin.id, newRole as "admin" | "customer" | "fixer", reason || undefined);
+            setAdmins((prev) =>
+                prev.map((a) => (a.id === admin.id ? { ...a, role: updated.role } : a))
+            );
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        } finally {
+            setActingId(null);
+        }
+    }
+
     const totalPages = Math.max(1, Math.ceil(total / 20));
 
     return (
@@ -207,10 +232,16 @@ export default function AdminsPage() {
                                             </td>
 
                                             <td className="py-4 pr-4">
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium capitalize">
-                                                    <ShieldCheck className="h-3 w-3" />
-                                                    {admin.role}
-                                                </span>
+                                                <select
+                                                    value={admin.role}
+                                                    onChange={(e) => handleRoleChange(admin, e.target.value)}
+                                                    disabled={actingId === admin.id}
+                                                    className="rounded-lg border bg-background px-2 py-1 text-xs font-medium capitalize outline-none transition focus:ring-2 focus:ring-primary disabled:opacity-60"
+                                                >
+                                                    <option value="admin">Admin</option>
+                                                    <option value="customer">Customer</option>
+                                                    <option value="fixer">Fixer</option>
+                                                </select>
                                             </td>
 
                                             <td className="py-4 pr-4 text-muted-foreground">
