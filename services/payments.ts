@@ -57,6 +57,10 @@ export const refundPayment = async (reference: string, reason: string): Promise<
     return normalizePayment(data);
 };
 
+export const exportPaymentsCsv = async (): Promise<{ filename: string; csv: string }> => {
+    return api.get("/admin/financial/export", { params: { type: "payments" } });
+};
+
 export const fetchFinancialStats = async (): Promise<FinancialStats> => {
     const data = await api.get<{ stats: FinancialStats }>("/admin/financial/stats");
 

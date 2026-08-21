@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme/theme-provider";
-import InlineScript from "@/components/theme/inline-script";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -101,8 +101,12 @@ export default function RootLayout({
       )}
     >
       <head>
-        <InlineScript
-          html={`(function(){try{var t=localStorage.getItem("eivver-theme");var d=t==="dark"||((!t||t==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})();`}
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("eivver-theme");var d=t==="dark"||((!t||t==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})();`,
+          }}
         />
       </head>
       <body className="min-h-screen bg-background text-foreground">

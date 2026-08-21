@@ -2,18 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Ban, CheckCircle2, Eye, Search, ShieldAlert, Users } from "lucide-react";
+import { Ban, CheckCircle2, Download, Eye, Search, ShieldAlert, Users } from "lucide-react";
 
 import PageHeader from "@/components/layout/page-header";
 import {
     banCustomer,
+    exportUsersCsv,
     fetchCustomers,
     fetchUserStats,
     reactivateCustomer,
     suspendCustomer,
 } from "@/services/customers";
 import { getApiErrorMessage } from "@/lib/axios";
-import { formatDate } from "@/lib/utils";
+import { downloadCsv, formatDate } from "@/lib/utils";
 import type { User } from "@/types/user";
 
 const statusStyles: Record<string, string> = {
@@ -85,6 +86,15 @@ export default function CustomersPage() {
             )
             .catch(() => {});
     }, []);
+
+    async function handleExport() {
+        try {
+            const { filename, csv } = await exportUsersCsv();
+            downloadCsv(filename, csv);
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        }
+    }
 
     async function handleSuspend(user: User) {
         const reason = window.prompt(
@@ -159,7 +169,15 @@ export default function CustomersPage() {
             <PageHeader
                 title="Customers"
                 description="View and manage platform customers"
-            />
+            >
+                <button
+                    onClick={handleExport}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition hover:bg-muted"
+                >
+                    <Download className="h-3.5 w-3.5" />
+                    Export CSV
+                </button>
+            </PageHeader>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard

@@ -39,6 +39,11 @@ export default function TopNavbar({ onMenuClick }: { onMenuClick: () => void }) 
     const { resolvedTheme, toggleTheme } = useTheme();
 
     const [today, setToday] = useState("");
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -91,9 +96,9 @@ export default function TopNavbar({ onMenuClick }: { onMenuClick: () => void }) 
                 <button
                     onClick={toggleTheme}
                     className="rounded-lg border p-2 transition hover:bg-muted"
-                    aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
+                    aria-label={`Switch to ${mounted && resolvedTheme === "dark" ? "light" : "dark"} mode`}
                 >
-                    {resolvedTheme === "dark" ? (
+                    {mounted && resolvedTheme === "dark" ? (
                         <Sun className="h-5 w-5" />
                     ) : (
                         <Moon className="h-5 w-5" />

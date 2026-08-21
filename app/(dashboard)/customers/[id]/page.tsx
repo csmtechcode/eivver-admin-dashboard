@@ -19,12 +19,15 @@ import Breadcrumb from "@/components/layout/breadcrumb";
 import {
     banCustomer,
     fetchCustomerById,
+    fetchUserActivity,
+    forceLogoutUser,
     reactivateCustomer,
+    resetUserPassword,
     suspendCustomer,
 } from "@/services/customers";
 import { fetchBookings } from "@/services/bookings";
 import { getApiErrorMessage } from "@/lib/axios";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import type { User } from "@/types/user";
 import type { Booking } from "@/types/booking";
 
@@ -59,6 +62,17 @@ export default function CustomerDetailPage() {
 
     const [customer, setCustomer] = useState<User | null>(null);
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [activity, setActivity] = useState<
+        Array<{
+            id: string;
+            domain: string;
+            action: string;
+            fromState: string | null;
+            toState: string | null;
+            reason: string | null;
+            createdAt: string;
+        }>
+    >([]);
     const [loading, setLoading] = useState(true);
     const [acting, setActing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -66,12 +80,16 @@ export default function CustomerDetailPage() {
     useEffect(() => {
         let cancelled = false;
 
-        
-        Promise.all([fetchCustomerById(id), fetchBookings({ customerId: id, limit: 10 })])
-            .then(([detail, bookingData]) => {
+        Promise.all([
+            fetchCustomerById(id),
+            fetchBookings({ customerId: id, limit: 10 }),
+            fetchUserActivity(id, { limit: 10 }),
+        ])
+            .then(([detail, bookingData, activityData]) => {
                 if (cancelled) return;
                 setCustomer(detail.user);
                 setBookings(bookingData.items);
+                setActivity(activityData.activity ?? []);
             })
             .catch((err) => {
                 if (!cancelled) setError(getApiErrorMessage(err));
@@ -134,6 +152,46 @@ export default function CustomerDetailPage() {
         try {
             await reactivateCustomer(customer.id, "Reactivated from admin dashboard");
             setCustomer({ ...customer, accountStatus: "active" });
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        } finally {
+            setActing(false);
+        }
+    }
+
+    async function handleResetPassword() {
+        if (!customer) return;
+
+        const newPassword = window.prompt(
+            "New password (min 8 chars, must include upper, lower, and digit):"
+        );
+
+        if (!newPassword) return;
+
+        setActing(true);
+        setError(null);
+
+        try {
+            await resetUserPassword(customer.id, newPassword);
+            window.alert("Password reset successfully.");
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        } finally {
+            setActing(false);
+        }
+    }
+
+    async function handleForceLogout() {
+        if (!customer) return;
+
+        if (!window.confirm(`Log ${customer.email} out of all devices?`)) return;
+
+        setActing(true);
+        setError(null);
+
+        try {
+            await forceLogoutUser(customer.id);
+            window.alert("User logged out of all active sessions.");
         } catch (err) {
             setError(getApiErrorMessage(err));
         } finally {
@@ -215,6 +273,22 @@ export default function CustomerDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleResetPassword}
+                        disabled={acting}
+                        className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-muted disabled:opacity-60"
+                    >
+                        Reset Password
+                    </button>
+
+                    <button
+                        onClick={handleForceLogout}
+                        disabled={acting}
+                        className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-muted disabled:opacity-60"
+                    >
+                        Force Logout
+                    </button>
+
                     {customer.accountStatus === "active" ? (
                         <>
                             <button
@@ -320,6 +394,46 @@ export default function CustomerDetailPage() {
                             : `This account is ${customer.accountStatus}.`}
                     </p>
                 </div>
+            </div>
+
+            <div className="rounded-2xl border bg-card p-6 shadow-sm dark:bg-zinc-900">
+                <div className="mb-6 flex items-center justify-between">
+                    <h2 className="flex items-center gap-2 text-lg font-semibold">
+                        <History className="h-4 w-4 text-muted-foreground" />
+                        Audit Activity
+                    </h2>
+                </div>
+
+                {activity.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                        No recorded activity for this account yet.
+                    </p>
+                ) : (
+                    <div className="space-y-3">
+                        {activity.map((entry) => (
+                            <div
+                                key={entry.id}
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-4"
+                            >
+                                <div>
+                                    <p className="font-medium">
+                                        {entry.action.replace(/_/g, " ").toLowerCase()}
+                                    </p>
+
+                                    <p className="text-xs text-muted-foreground">
+                                        {entry.domain} ·{" "}
+                                        {entry.fromState ?? "—"} → {entry.toState ?? "—"}
+                                        {entry.reason ? ` · "${entry.reason}"` : ""}
+                                    </p>
+                                </div>
+
+                                <p className="text-xs text-muted-foreground">
+                                    {formatDateTime(entry.createdAt)}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="rounded-2xl border bg-card p-6 shadow-sm dark:bg-zinc-900">

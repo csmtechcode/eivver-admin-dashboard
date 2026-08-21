@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BadgeCheck, Eye, Search, Star, UserCog, Users } from "lucide-react";
+import { BadgeCheck, Download, Eye, Search, Star, UserCog, Users } from "lucide-react";
 
 import PageHeader from "@/components/layout/page-header";
 import {
     displayName,
+    exportFixersCsv,
     fetchFixerDashboardStats,
     fetchFixers,
     fixerLocation,
 } from "@/services/fixers";
 import { getApiErrorMessage } from "@/lib/axios";
+import { downloadCsv } from "@/lib/utils";
 import type { AdminFixer, AvailabilityStatus } from "@/types/fixer";
 
 const verificationStyles: Record<string, string> = {
@@ -94,7 +96,22 @@ export default function FixersPage() {
             <PageHeader
                 title="Fixers"
                 description="Manage service professionals on the platform"
-            />
+            >
+                <button
+                    onClick={async () => {
+                        try {
+                            const { filename, csv } = await exportFixersCsv();
+                            downloadCsv(filename, csv);
+                        } catch (err) {
+                            setError(getApiErrorMessage(err));
+                        }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition hover:bg-muted"
+                >
+                    <Download className="h-3.5 w-3.5" />
+                    Export CSV
+                </button>
+            </PageHeader>
 
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard

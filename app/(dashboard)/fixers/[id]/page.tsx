@@ -24,16 +24,19 @@ import {
     displayName,
     fetchFixerById,
     fetchFixerDocuments,
+    fetchFixerReviews,
     fixerLocation,
     reactivateFixer,
     rejectFixer,
     suspendFixer,
+    updateFixerProfile,
 } from "@/services/fixers";
 import { fetchBookings } from "@/services/bookings";
 import { getApiErrorMessage } from "@/lib/axios";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types/booking";
 import type { AdminFixer, FixerDocument, FixerMetrics } from "@/types/fixer";
+import type { FixerReview } from "@/types/admin";
 
 function DetailRow({
     icon: Icon,
@@ -77,26 +80,42 @@ export default function FixerDetailPage() {
     const [metrics, setMetrics] = useState<FixerMetrics | null>(null);
     const [documents, setDocuments] = useState<FixerDocument[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [reviews, setReviews] = useState<FixerReview[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [acting, setActing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const [showProfileForm, setShowProfileForm] = useState(false);
+    const [profileForm, setProfileForm] = useState<{
+        trade?: string;
+        serviceCategory?: string;
+        skills?: string;
+        locationState?: string;
+        locationCity?: string;
+        locationCountry?: string;
+        yearsOfExperience?: number;
+        bio?: string;
+    }>({});
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [profileError, setProfileError] = useState<string | null>(null);
+
     useEffect(() => {
         let cancelled = false;
 
-        
         Promise.all([
             fetchFixerById(id),
             fetchFixerDocuments(id),
             fetchBookings({ fixerId: id, limit: 10 }),
+            fetchFixerReviews(id),
         ])
-            .then(([detail, docs, bookingData]) => {
+            .then(([detail, docs, bookingData, reviewData]) => {
                 if (cancelled) return;
                 setFixer(detail.fixer);
                 setMetrics(detail.metrics);
                 setDocuments(docs);
                 setBookings(bookingData.items);
+                setReviews(reviewData.reviews ?? []);
             })
             .catch((err) => {
                 if (!cancelled) setError(getApiErrorMessage(err));
@@ -165,6 +184,55 @@ export default function FixerDetailPage() {
         }
     }
 
+    function openProfileForm() {
+        if (!fixer) return;
+
+        setProfileForm({
+            trade: fixer.trade ?? undefined,
+            serviceCategory: fixer.serviceCategory ?? undefined,
+            skills: fixer.skills?.length ? fixer.skills.join(", ") : undefined,
+            locationState: fixer.locationState ?? undefined,
+            locationCity: fixer.locationCity ?? undefined,
+            locationCountry: fixer.locationCountry ?? undefined,
+            yearsOfExperience: fixer.yearsOfExperience ?? undefined,
+            bio: fixer.bio ?? undefined,
+        });
+        setProfileError(null);
+        setShowProfileForm(true);
+    }
+
+    async function handleSaveProfile() {
+        if (!fixer) return;
+
+        setSavingProfile(true);
+        setProfileError(null);
+
+        try {
+            const updated = await updateFixerProfile(fixer.id, {
+                trade: profileForm.trade || undefined,
+                serviceCategory: profileForm.serviceCategory || undefined,
+                skills: profileForm.skills
+                    ? profileForm.skills
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                    : undefined,
+                locationState: profileForm.locationState || undefined,
+                locationCity: profileForm.locationCity || undefined,
+                locationCountry: profileForm.locationCountry || undefined,
+                yearsOfExperience: profileForm.yearsOfExperience ?? undefined,
+                bio: profileForm.bio || undefined,
+            });
+
+            setFixer({ ...fixer, ...updated });
+            setShowProfileForm(false);
+        } catch (err) {
+            setProfileError(getApiErrorMessage(err));
+        } finally {
+            setSavingProfile(false);
+        }
+    }
+
     if (loading) {
         return (
             <div className="p-6">
@@ -229,6 +297,13 @@ export default function FixerDetailPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={openProfileForm}
+                        className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+                    >
+                        Edit Profile
+                    </button>
+
                     {fixer.verificationStatus === "pending" && (
                         <>
                             <button
@@ -443,6 +518,55 @@ export default function FixerDetailPage() {
 
             <div className="rounded-2xl border bg-card p-6 shadow-sm dark:bg-zinc-900">
                 <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Reviews ({reviews.length})</h2>
+                </div>
+
+                {reviews.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                        No reviews for this fixer yet.
+                    </p>
+                ) : (
+                    <div className="space-y-3">
+                        {reviews.map((review) => (
+                            <div key={review.id} className="rounded-xl border p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <p className="flex items-center gap-1.5 text-sm font-medium">
+                                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                        {review.rating} · {review.customerName}
+                                    </p>
+
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
+                                                review.status === "approved"
+                                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                                                    : review.status === "rejected"
+                                                      ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
+                                                      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300"
+                                            }`}
+                                        >
+                                            {review.status}
+                                        </span>
+
+                                        <span className="text-xs text-muted-foreground">
+                                            {formatDate(review.createdAt)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {review.comment && (
+                                    <p className="mt-2 text-sm text-muted-foreground">
+                                        {review.comment}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="rounded-2xl border bg-card p-6 shadow-sm dark:bg-zinc-900">
+                <div className="mb-6 flex items-center justify-between">
                     <h2 className="text-lg font-semibold">Assigned Bookings</h2>
 
                         <Link
@@ -490,6 +614,183 @@ export default function FixerDetailPage() {
                         </div>
                     )}
                 </div>
+
+                {showProfileForm && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                        <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border bg-card p-6 shadow-xl dark:bg-zinc-900">
+                            <h3 className="mb-4 text-lg font-semibold">Edit Fixer Profile</h3>
+
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium">
+                                            Trade
+                                        </label>
+
+                                        <input
+                                            value={profileForm.trade ?? ""}
+                                            onChange={(e) =>
+                                                setProfileForm((f) => ({
+                                                    ...f,
+                                                    trade: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium">
+                                            Service category
+                                        </label>
+
+                                        <input
+                                            value={profileForm.serviceCategory ?? ""}
+                                            onChange={(e) =>
+                                                setProfileForm((f) => ({
+                                                    ...f,
+                                                    serviceCategory: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium">
+                                        Skills (comma separated)
+                                    </label>
+
+                                    <input
+                                        value={profileForm.skills ?? ""}
+                                        onChange={(e) =>
+                                            setProfileForm((f) => ({
+                                                ...f,
+                                                skills: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="plumbing, tiling, repairs"
+                                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium">
+                                            Country
+                                        </label>
+
+                                        <input
+                                            value={profileForm.locationCountry ?? ""}
+                                            onChange={(e) =>
+                                                setProfileForm((f) => ({
+                                                    ...f,
+                                                    locationCountry: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium">
+                                            State
+                                        </label>
+
+                                        <input
+                                            value={profileForm.locationState ?? ""}
+                                            onChange={(e) =>
+                                                setProfileForm((f) => ({
+                                                    ...f,
+                                                    locationState: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium">
+                                            City
+                                        </label>
+
+                                        <input
+                                            value={profileForm.locationCity ?? ""}
+                                            onChange={(e) =>
+                                                setProfileForm((f) => ({
+                                                    ...f,
+                                                    locationCity: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium">
+                                        Years of experience
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        value={profileForm.yearsOfExperience ?? ""}
+                                        onChange={(e) =>
+                                            setProfileForm((f) => ({
+                                                ...f,
+                                                yearsOfExperience: e.target.value
+                                                    ? Number(e.target.value)
+                                                    : undefined,
+                                            }))
+                                        }
+                                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium">Bio</label>
+
+                                    <textarea
+                                        value={profileForm.bio ?? ""}
+                                        onChange={(e) =>
+                                            setProfileForm((f) => ({
+                                                ...f,
+                                                bio: e.target.value,
+                                            }))
+                                        }
+                                        rows={3}
+                                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary"
+                                    />
+                                </div>
+
+                                {profileError && (
+                                    <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                                        {profileError}
+                                    </p>
+                                )}
+
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <button
+                                        onClick={() => setShowProfileForm(false)}
+                                        className="rounded-lg border px-3 py-2 text-xs font-medium transition hover:bg-muted"
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        onClick={handleSaveProfile}
+                                        disabled={savingProfile}
+                                        className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                                    >
+                                        {savingProfile ? "Saving..." : "Save Changes"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
         </div>
     );
 }

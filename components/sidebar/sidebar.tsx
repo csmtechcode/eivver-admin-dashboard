@@ -4,17 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
-    LayoutDashboard,
-    Users,
-    UserCog,
-    Wrench,
+    ArrowLeftRight,
+    BadgeCheck,
+    Banknote,
+    Bell,
     CalendarDays,
     CreditCard,
-    BadgeCheck,
-    Tags,
-    Bell,
+    Flag,
+    LayoutDashboard,
+    Megaphone,
+    ScrollText,
     Settings,
+    ShieldCheck,
+    Star,
+    Tags,
     User,
+    UserCog,
+    Users,
+    Wallet,
+    Wrench,
     type LucideIcon,
 } from "lucide-react";
 
@@ -32,11 +40,19 @@ export const navigation: NavItem[] = [
     { title: "Bookings", href: "/bookings", icon: CalendarDays },
     { title: "Customers", href: "/customers", icon: Users },
     { title: "Fixers", href: "/fixers", icon: UserCog },
+    { title: "Reviews", href: "/reviews", icon: Star },
+    { title: "Reports", href: "/reports", icon: Flag },
     { title: "Services", href: "/services", icon: Wrench },
     { title: "Categories", href: "/categories", icon: Tags },
     { title: "Payments", href: "/payments", icon: CreditCard },
+    { title: "Withdrawals", href: "/withdrawals", icon: Banknote },
+    { title: "Transactions", href: "/transactions", icon: ArrowLeftRight },
+    { title: "Wallets", href: "/wallets", icon: Wallet },
     { title: "Verification", href: "/verification", icon: BadgeCheck },
     { title: "Notifications", href: "/notifications", icon: Bell },
+    { title: "Banners", href: "/banners", icon: Megaphone },
+    { title: "Admins", href: "/admins", icon: ShieldCheck },
+    { title: "Audit Logs", href: "/audit-logs", icon: ScrollText },
 ];
 
 export const bottomNavigation: NavItem[] = [
@@ -54,9 +70,9 @@ export default function Sidebar() {
     const hydrated = useHydrated();
 
     return (
-        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r bg-background lg:flex lg:flex-col">
+        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-hidden border-r bg-background lg:flex lg:flex-col">
             {/* Logo */}
-            <div className="border-b px-6 py-6">
+            <div className="shrink-0 border-b px-6 py-6">
                 <h1 className="text-2xl font-bold tracking-tight">
                     EIVVER
                 </h1>
@@ -67,7 +83,7 @@ export default function Sidebar() {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 space-y-2 p-4">
+            <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent]">
                 {navigation.map((item) => {
                     const active = isActive(pathname, item.href);
                     const Icon = item.icon;
@@ -90,7 +106,7 @@ export default function Sidebar() {
             </nav>
 
             {/* Bottom */}
-            <div className="border-t p-4">
+            <div className="shrink-0 border-t p-4">
                 {bottomNavigation.map((item) => {
                     const active = isActive(pathname, item.href);
                     const Icon = item.icon;

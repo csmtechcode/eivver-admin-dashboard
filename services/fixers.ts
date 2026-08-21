@@ -144,6 +144,47 @@ export const reactivateFixer = async (id: string, reason?: string): Promise<Admi
     return api.patch(`/admin/fixers/${id}/reactivate`, { reason });
 };
 
+export const exportFixersCsv = async (): Promise<{ filename: string; csv: string }> => {
+    return api.get("/admin/fixers/export");
+};
+
+export const fetchFixerReviews = async (
+    id: string
+): Promise<{
+    count: number;
+    reviews: Array<{
+        id: string;
+        bookingId: string | null;
+        customerName: string;
+        customerEmail: string | null;
+        rating: number;
+        comment: string | null;
+        status: "pending" | "approved" | "rejected";
+        adminNotes: string | null;
+        createdAt: string;
+    }>;
+}> => {
+    return api.get(`/admin/fixers/${id}/reviews`);
+};
+
+export const updateFixerProfile = async (
+    id: string,
+    payload: {
+        trade?: string;
+        serviceCategory?: string;
+        skills?: string[];
+        locationState?: string;
+        locationCity?: string;
+        locationCountry?: string;
+        yearsOfExperience?: number;
+        bio?: string;
+    }
+): Promise<AdminFixer> => {
+    const data = await api.patch<{ fixer: AdminFixer }>(`/admin/fixers/${id}/profile`, payload);
+
+    return data.fixer;
+};
+
 export function displayName(fixer: AdminFixer): string {
     if (fixer.user?.name) return fixer.user.name;
     if (fixer.user) {

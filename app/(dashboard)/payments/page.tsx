@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, RotateCcw, Wallet } from "lucide-react";
+import { CreditCard, Download, RotateCcw, Wallet } from "lucide-react";
 
 import PageHeader from "@/components/layout/page-header";
 import {
+    exportPaymentsCsv,
     fetchFinancialStats,
     fetchPayments,
     refundPayment,
 } from "@/services/payments";
 import { getApiErrorMessage } from "@/lib/axios";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { downloadCsv, formatCurrency, formatDate } from "@/lib/utils";
 import type { Payment, PaymentStatus } from "@/types/payment";
 
 const statusStyles: Record<string, string> = {
@@ -122,7 +123,22 @@ export default function PaymentsPage() {
             <PageHeader
                 title="Payments"
                 description="Monitor payments, refunds and revenue across the platform"
-            />
+            >
+                <button
+                    onClick={async () => {
+                        try {
+                            const { filename, csv } = await exportPaymentsCsv();
+                            downloadCsv(filename, csv);
+                        } catch (err) {
+                            setError(getApiErrorMessage(err));
+                        }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition hover:bg-muted"
+                >
+                    <Download className="h-3.5 w-3.5" />
+                    Export CSV
+                </button>
+            </PageHeader>
 
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard

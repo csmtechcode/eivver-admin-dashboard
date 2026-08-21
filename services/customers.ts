@@ -86,6 +86,47 @@ export const restoreCustomer = async (id: string): Promise<User> => {
     return api.patch(`/admin/users/${id}/restore`);
 };
 
+export const exportUsersCsv = async (): Promise<{ filename: string; csv: string }> => {
+    return api.get("/admin/users/export");
+};
+
+export const fetchUserActivity = async (
+    id: string,
+    params: { page?: number; limit?: number } = {}
+): Promise<{
+    user: User;
+    activity: Array<{
+        id: string;
+        domain: string;
+        action: string;
+        fromState: string | null;
+        toState: string | null;
+        actorId: string | null;
+        actorRole: string | null;
+        reason: string | null;
+        createdAt: string;
+    }>;
+    meta: { total: number; page: number; limit: number; totalPages: number };
+}> => {
+    return api.get(`/admin/users/${id}/activity`, {
+        params: { page: params.page ?? 1, limit: params.limit ?? 20 },
+    });
+};
+
+export const resetUserPassword = async (id: string, newPassword: string): Promise<User> => {
+    const data = await api.patch<{ user: User }>(`/admin/users/${id}/reset-password`, {
+        newPassword,
+    });
+
+    return data.user;
+};
+
+export const forceLogoutUser = async (id: string): Promise<User> => {
+    const data = await api.patch<{ user: User }>(`/admin/users/${id}/force-logout`);
+
+    return data.user;
+};
+
 export function toCustomer(user: User): Customer {
     const fixer = user.fixerProfile;
     const location = fixer?.location
